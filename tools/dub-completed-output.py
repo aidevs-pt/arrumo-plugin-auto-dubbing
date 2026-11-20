@@ -7,7 +7,7 @@ import re
 import subprocess
 import tempfile
 
-from subtitle_translation import translate_track
+from subtitle_translation import bundled_translator, translate_track
 from voiceover import render_voiceover, validate_windows, video_duration_ms
 
 
@@ -32,6 +32,11 @@ def dub_output(args):
     if not formats or any(format_id <= 0 for format_id in formats) or len(set(formats)) != len(formats):
         raise ValueError("Select one or more distinct verified format IDs")
 
+    translator = None
+    if args.translator_plugin:
+        translator = bundled_translator(editor, args.translator_plugin)
+    elif args.translator:
+        translator = [args.translator.resolve(strict=True)]
     plans = []
     for format_id in formats:
         scope = (args.workspace, args.run, format_id)
@@ -39,8 +44,8 @@ def dub_output(args):
             source = Path(editor("verified-video-source", *scope))
             duration = round(video_duration_ms(source))
             revision = [] if args.revision is None else [args.revision]
-            if args.translator and language not in editor("completed-subtitle-languages", *scope):
-                translated = translate_track(editor, scope, language, args.translator)
+            if translator and language not in editor("completed-subtitle-languages", *scope):
+                translated = translate_track(editor, scope, language, translator)
                 revision = [translated["revision"]]
             track = editor("completed-subtitle-track", *scope, language, *revision)
             request = json.dumps({"subtitles": track["subtitles"]}, ensure_ascii=False)
@@ -109,6 +114,7 @@ def main():
     parser.add_argument("--audio-format", choices=["mp3", "wav"], required=True)
     subtitle_source = parser.add_mutually_exclusive_group()
     subtitle_source.add_argument("--revision", type=int)
+    subtitle_source.add_argument("--translator-plugin", help="create missing tracks with a bundled local translator")
     subtitle_source.add_argument("--translator", type=Path, help="create missing translated tracks with this local adapter")
     args = parser.parse_args()
     try:

@@ -40,7 +40,7 @@ python3 tools/translate-completed-subtitles.py /path/to/arrumo-workspaces /path/
   1 42 3 de /path/to/translator
 ```
 
-The command reads the latest primary subtitles and creates the language track. Pass `--expected-revision` to update an existing track. The saved revision can be used immediately by the dubbing command below. Translator selection and credentials belong to the adapter executable. The editor does not launch this command automatically.
+The command reads the latest primary subtitles and creates the language track. Pass `--expected-revision` to update an existing track. The saved revision can be used immediately by the dubbing command below. Select a bundled provider by passing `--translator-plugin codex` or `--translator-plugin claude-code` in place of the executable path. This uses the sibling plugin source checkouts or the directory supplied by `ARRUMO_PLUGIN_SOURCE_ROOT`. Translator credentials belong to the adapter executable. The editor does not launch this command automatically.
 
 ## Dub completed outputs
 
@@ -51,9 +51,9 @@ python3 tools/dub-completed-output.py /path/to/arrumo-workspaces /path/to/worksp
   1 42 3 es elevenlabs YOUR_VOICE_ID --audio-format mp3
 ```
 
-The numeric arguments select workspace, run, and format. Pass `--revision` to pin a particular subtitle revision. Select the provider's response format with `--audio-format`. Use `all` in place of the format ID for every verified output or repeat `--additional-format <id>` to add specific formats. Add `--translator /path/to/translator` to create missing language tracks before synthesis. Existing tracks are reused, and newly translated tracks remain available if dubbing fails. Choose either `--translator` or `--revision`. The command checks every selected video and subtitle track before requesting speech. Repeated cue text shares one synthesis result within the invocation.
+The numeric arguments select workspace, run, and format. Pass `--revision` to pin a particular subtitle revision. Select the provider's response format with `--audio-format`. Use `all` in place of the format ID for every verified output or repeat `--additional-format <id>` to add specific formats. Add `--translator /path/to/translator` or `--translator-plugin <id>` to create missing language tracks before synthesis. Existing tracks are reused, and newly translated tracks remain available if dubbing fails. Choose one of `--translator`, `--translator-plugin`, or `--revision`. The command checks every selected video and subtitle track before requesting speech. Repeated cue text shares one synthesis result within the invocation.
 
-A batch reports its completed formats and stops at the first processing failure. Its JSON includes the failed format and any skipped format IDs. If attachment fails after import, the result includes the managed asset ID for recovery. Built-in translator dispatch and desktop invocation remain pending.
+A batch reports its completed formats and stops at the first processing failure. Its JSON includes the failed format and any skipped format IDs. If attachment fails after import, the result includes the managed asset ID for recovery. Published translator package dispatch and desktop invocation remain pending.
 
 ## Build and package
 

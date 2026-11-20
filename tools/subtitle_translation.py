@@ -2,12 +2,28 @@
 """Translate one verified subtitle output using a local translation adapter."""
 import argparse
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
 import tempfile
+import sys
 
 MAX_ACTION_INPUT = 60 * 1024
+
+
+def bundled_translator(editor, plugin_id):
+    if not re.fullmatch(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*", plugin_id):
+        raise ValueError("Invalid translator plugin ID")
+    catalog = editor("plugin-catalog")
+    selected = next((plugin for plugin in catalog if plugin["bundled"]
+                     and plugin["manifest"]["id"] == plugin_id
+                     and "subtitle-translation" in plugin["manifest"]["capabilities"]), None)
+    if selected is None:
+        raise ValueError("Selected plugin does not provide bundled subtitle translation")
+    root = Path(os.environ.get("ARRUMO_PLUGIN_SOURCE_ROOT", Path(__file__).resolve().parents[2]))
+    script = root / plugin_id / "tools" / "translate-subtitles.py"
+    return [sys.executable, script.resolve(strict=True)]
 
 
 def translate_track(editor, scope, language, translator, expected_revision=0):
@@ -38,7 +54,7 @@ def translate_track(editor, scope, language, translator, expected_revision=0):
     request = json.dumps({"targetLanguage": language, "cues": cues}, ensure_ascii=False).encode("utf-8")
     with tempfile.TemporaryFile() as output:
         subprocess.run(
-            [translator.resolve(strict=True)], input=request, stdout=output,
+            translator, input=request, stdout=output,
             check=True, timeout=120,
         )
         output.seek(0)
@@ -64,7 +80,9 @@ def main():
     parser.add_argument("run", type=int)
     parser.add_argument("format", type=int)
     parser.add_argument("language")
-    parser.add_argument("translator", type=Path, help="local executable accepting cue JSON on stdin")
+    adapter = parser.add_mutually_exclusive_group(required=True)
+    adapter.add_argument("translator", type=Path, nargs="?", help="local executable accepting cue JSON on stdin")
+    adapter.add_argument("--translator-plugin", help="bundled translator ID resolved from local plugin checkouts")
     parser.add_argument("--expected-revision", type=int, default=0)
     args = parser.parse_args()
 
@@ -76,9 +94,11 @@ def main():
         return json.loads(result.stdout) if result.stdout else None
 
     try:
+        translator = (bundled_translator(editor, args.translator_plugin) if args.translator_plugin
+                      else [args.translator.resolve(strict=True)])
         print(json.dumps(translate_track(
             editor, (args.workspace, args.run, args.format), args.language,
-            args.translator, args.expected_revision,
+            translator, args.expected_revision,
         )))
     except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
         parser.exit(1, f"{error}\n")
