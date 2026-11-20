@@ -40,7 +40,7 @@ python3 tools/translate-completed-subtitles.py /path/to/arrumo-workspaces /path/
   1 42 3 de /path/to/translator
 ```
 
-The command reads the latest primary subtitles and creates the language track. Pass `--expected-revision` to update an existing track. The saved revision can be used immediately by the dubbing command below. Select a bundled provider by passing `--translator-plugin codex` or `--translator-plugin claude-code` in place of the executable path. This uses the sibling plugin source checkouts or the directory supplied by `ARRUMO_PLUGIN_SOURCE_ROOT`. Translator credentials belong to the adapter executable. The editor does not launch this command automatically.
+The command reads the latest primary subtitles and creates the language track. Pass `--expected-revision` to update an existing track. The saved revision can be used immediately by the dubbing command below. Select a bundled provider by passing `--translator-plugin codex` or `--translator-plugin claude-code` in place of the executable path. This uses the sibling plugin source checkouts or the directory supplied by `ARRUMO_PLUGIN_SOURCE_ROOT`. When using tools from a release ZIP, set `ARRUMO_PLUGIN_SOURCE_ROOT` if selecting a translator by plugin ID. Translator credentials belong to the adapter executable. The editor does not launch this command automatically.
 
 ## Dub completed outputs
 
@@ -73,7 +73,7 @@ The editor’s default debug build picks up `plugin.zip` from this sibling check
 
 ## Prepare a release artifact
 
-Run the following from the intended release revision. The command pins the SDK checkout, Rust toolchain and WebAssembly tooling and prints the ZIP's SHA-256 for the registry.
+Run the following from the intended release revision. The command pins the SDK checkout, Rust toolchain and WebAssembly tooling and prints the ZIP's SHA-256 for the registry. Release ZIPs include the isolated backend, license, documentation and local workflow tools. Run the tools with Python after verifying the release digest and extracting the ZIP to a local directory. The editor executes the Wasm actions in its plugin runtime. The Python commands use the local editor CLI and FFmpeg.
 
 ```sh
 rustup target add --toolchain 1.100.0 wasm32-unknown-unknown

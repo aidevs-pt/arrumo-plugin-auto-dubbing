@@ -33,5 +33,11 @@ wasm-tools component new \
   "$pending/target/wasm32-unknown-unknown/release/arrumo_auto_dubbing.wasm" \
   -o "$pending/backend.wasm"
 wasm-tools validate "$pending/backend.wasm"
-cp "$source/manifest.json" "$pending/manifest.json"
-python3 "$sdk/tools/package_plugin.py" "$pending" "$output" --include backend.wasm
+cp "$source/manifest.json" "$source/LICENSE" "$source/README.md" "$pending/"
+mkdir "$pending/tools"
+set -- --include backend.wasm --include LICENSE --include README.md
+for tool in dub-completed-output.py render-voiceover.py translate-completed-subtitles.py subtitle_translation.py voiceover.py; do
+  cp "$source/tools/$tool" "$pending/tools/$tool"
+  set -- "$@" --include "tools/$tool"
+done
+python3 "$sdk/tools/package_plugin.py" "$pending" "$output" "$@"
