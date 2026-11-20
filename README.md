@@ -27,6 +27,17 @@ python3 ../../plugin-sdk/tools/package_plugin.py . plugin.zip --include backend.
 
 The editor’s default debug build picks up `plugin.zip` from this sibling checkout. The package can also be installed manually in a core-only build. Published editor builds require a staged package whose digest is pinned in the official registry.
 
+## Prepare a release artifact
+
+Run the following from the intended release revision. The command pins the SDK checkout, Rust toolchain and WebAssembly tooling and prints the ZIP's SHA-256 for the registry.
+
+```sh
+rustup target add --toolchain 1.100.0 wasm32-unknown-unknown
+tools/package-release.sh /path/to/pinned/plugin-sdk /tmp/arrumo-auto-dubbing.zip
+```
+
+Install Python `jsonschema` and place `wasm-tools` 1.262.0 on the path before running the command.
+
 Copyright © 2026 DEVS AI Unipessoal LDA. Licensed under the [GNU Affero General Public License v3.0](LICENSE).
 
 For custom AI solutions for your company, visit [DEVS AI](https://aidevs.pt).
