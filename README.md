@@ -85,3 +85,12 @@ Install Python `jsonschema` and place `wasm-tools` 1.262.0 on the path before ru
 Copyright © 2026 DEVS AI Unipessoal LDA. Licensed under the [GNU Affero General Public License v3.0](LICENSE).
 
 For custom AI solutions for your company, visit [DEVS AI](https://aidevs.pt).
+
+## Render supplied clips with the isolated worker
+
+The release includes `tools/render-media-worker.py`. Use the SDK media
+package runner with that entrypoint and `--include tools/voiceover.py`.
+Supply a dedicated input directory containing `source.mp4`, `plan.json`
+and the numbered cue WAV files. The worker writes `dubbed.mp4` and
+`result.json` to the output directory. Translation and speech synthesis
+happen before this isolated media step.
