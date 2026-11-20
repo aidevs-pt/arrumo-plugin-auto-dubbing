@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
 """Render and attach a dub for selected completed Arrumo output formats."""
 import argparse
-from contextlib import contextmanager, nullcontext
-import errno
+from contextlib import nullcontext
 import hashlib
 import json
-import os
 from pathlib import Path
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
-import time
 import zipfile
 
+from speech_cache import is_cached_clip, publish_cached_clip, reuse_cached_clip, speech_clip_lock
 from subtitle_translation import bundled_translator, translate_track
 from voiceover import render_voiceover, validate_windows, video_duration_ms
 
@@ -156,7 +154,7 @@ def dub_output(args):
                         cache_file = cached_clip(text)
                         with speech_clip_lock(cache_file) if cache_file else nullcontext():
                             if cache_file and is_cached_clip(cache_file):
-                                shutil.copyfile(cache_file, cached)
+                                reuse_cached_clip(cache_file, cached)
                             else:
                                 raw = stem.with_suffix(f".{audio_format}")
                                 editor("synthesize-speech", args.workspace, args.provider, args.voice, raw, data=text)
@@ -201,59 +199,6 @@ def dub_output(args):
                 return {"completed": completed, "failed": failure, "skipped": formats[index + 1:]}
             completed.append({"assetId": asset_id, "formatId": format_id, "subtitleRevision": revision})
     return {"completed": completed} if args.format == "all" or args.additional_format else completed[0]
-
-
-def is_cached_clip(path):
-    if path.is_symlink() or (path.exists() and (not path.is_file() or path.stat().st_size == 0)):
-        raise ValueError("Invalid cached speech clip")
-    return path.is_file()
-
-
-@contextmanager
-def speech_clip_lock(path, timeout=300):
-    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    lock_path = path.with_suffix(".lock")
-    if lock_path.is_symlink():
-        raise ValueError("Invalid speech cache lock")
-    flags = os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0)
-    with os.fdopen(os.open(lock_path, flags, 0o600), "r+b") as lock:
-        if os.name == "nt":
-            import msvcrt
-
-            def acquire():
-                msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
-        else:
-            import fcntl
-
-            def acquire():
-                fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-
-        deadline = time.monotonic() + timeout
-        while True:
-            try:
-                acquire()
-                break
-            except OSError as error:
-                if error.errno not in (errno.EACCES, errno.EAGAIN, errno.EDEADLK):
-                    raise
-                if time.monotonic() >= deadline:
-                    raise TimeoutError("Timed out waiting for cached speech synthesis") from error
-                time.sleep(0.1)
-        yield
-
-
-def publish_cached_clip(source, destination):
-    destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(dir=destination.parent, prefix=".arrumo-speech-") as directory:
-        pending = Path(directory) / "clip.wav"
-        shutil.copyfile(source, pending)
-        with pending.open("r+b") as stream:
-            os.fsync(stream.fileno())
-        try:
-            destination.hardlink_to(pending)
-        except FileExistsError:
-            if not is_cached_clip(destination):
-                raise
 
 
 def main():

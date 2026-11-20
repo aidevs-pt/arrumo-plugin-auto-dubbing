@@ -36,7 +36,7 @@ wasm-tools validate "$pending/backend.wasm"
 cp "$source/manifest.json" "$source/LICENSE" "$source/README.md" "$pending/"
 mkdir "$pending/tools"
 set -- --include backend.wasm --include LICENSE --include README.md
-for tool in render-media-worker.py dub-completed-output.py render-voiceover.py translate-completed-subtitles.py subtitle_translation.py voiceover.py; do
+for tool in prune-speech-cache.py speech_cache.py render-media-worker.py dub-completed-output.py render-voiceover.py translate-completed-subtitles.py subtitle_translation.py voiceover.py; do
   cp "$source/tools/$tool" "$pending/tools/$tool"
   set -- "$@" --include "tools/$tool"
 done
