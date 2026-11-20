@@ -51,7 +51,7 @@ python3 tools/dub-completed-output.py /path/to/arrumo-workspaces /path/to/worksp
   1 42 3 es elevenlabs YOUR_VOICE_ID --audio-format mp3
 ```
 
-The numeric arguments select workspace, run, and format. Pass `--revision` to pin a particular subtitle revision. Select the provider's response format with `--audio-format`. Use `all` in place of the format ID for every verified output or repeat `--additional-format <id>` to add specific formats. The command checks every selected video and subtitle track before requesting speech. Repeated cue text shares one synthesis result within the invocation.
+The numeric arguments select workspace, run, and format. Pass `--revision` to pin a particular subtitle revision. Select the provider's response format with `--audio-format`. Use `all` in place of the format ID for every verified output or repeat `--additional-format <id>` to add specific formats. Add `--translator /path/to/translator` to create missing language tracks before synthesis. Existing tracks are reused, and newly translated tracks remain available if dubbing fails. Choose either `--translator` or `--revision`. The command checks every selected video and subtitle track before requesting speech. Repeated cue text shares one synthesis result within the invocation.
 
 A batch reports its completed formats and stops at the first processing failure. Its JSON includes the failed format and any skipped format IDs. If attachment fails after import, the result includes the managed asset ID for recovery. Built-in translator dispatch and desktop invocation remain pending.
 

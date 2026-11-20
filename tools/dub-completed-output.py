@@ -7,6 +7,7 @@ import re
 import subprocess
 import tempfile
 
+from subtitle_translation import translate_track
 from voiceover import render_voiceover, validate_windows, video_duration_ms
 
 
@@ -38,6 +39,9 @@ def dub_output(args):
             source = Path(editor("verified-video-source", *scope))
             duration = round(video_duration_ms(source))
             revision = [] if args.revision is None else [args.revision]
+            if args.translator and language not in editor("completed-subtitle-languages", *scope):
+                translated = translate_track(editor, scope, language, args.translator)
+                revision = [translated["revision"]]
             track = editor("completed-subtitle-track", *scope, language, *revision)
             request = json.dumps({"subtitles": track["subtitles"]}, ensure_ascii=False)
             if len(request.encode("utf-8")) > 60 * 1024:
@@ -49,7 +53,7 @@ def dub_output(args):
             validate_windows(duration, segments)
             if any(not isinstance(segment["text"], str) or not segment["text"].strip() for segment in segments):
                 raise ValueError("Speech plan contains invalid cue text")
-        except (OSError, ValueError, KeyError, TypeError, subprocess.CalledProcessError) as error:
+        except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
             raise ValueError(f"Format {format_id} preflight failed: {error}") from error
         plans.append((scope, source, duration, track["revision"], segments))
 
@@ -82,7 +86,7 @@ def dub_output(args):
                 render_voiceover({"durationMillis": duration, "segments": segments}, target, dubbed, source)
                 asset_id = editor("import-asset", args.workspace, dubbed)["id"]
                 editor("attach-completed-media", *scope, asset_id)
-            except (OSError, ValueError, KeyError, TypeError, subprocess.CalledProcessError) as error:
+            except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
                 failure = {"formatId": format_id, "error": str(error)}
                 if asset_id is not None:
                     failure["assetId"] = asset_id
@@ -103,14 +107,16 @@ def main():
     parser.add_argument("provider")
     parser.add_argument("voice")
     parser.add_argument("--audio-format", choices=["mp3", "wav"], required=True)
-    parser.add_argument("--revision", type=int)
+    subtitle_source = parser.add_mutually_exclusive_group()
+    subtitle_source.add_argument("--revision", type=int)
+    subtitle_source.add_argument("--translator", type=Path, help="create missing translated tracks with this local adapter")
     args = parser.parse_args()
     try:
         result = dub_output(args)
         print(json.dumps(result))
         if "failed" in result:
             parser.exit(1)
-    except (OSError, ValueError, KeyError, TypeError, subprocess.CalledProcessError) as error:
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
         parser.exit(1, f"{error}\n")
 
 
