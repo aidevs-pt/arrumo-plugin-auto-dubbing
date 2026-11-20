@@ -1,8 +1,8 @@
 {
   "schemaVersion": 6,
   "id": "auto-dubbing",
-  "name": "Arrumo Auto-Dubbing Plugin",
-  "description": "Dubbing and subtitle translation for selected video outputs using configured providers.",
+  "name": "Auto-dubbing",
+  "description": "Voices finished videos and their outputs in other languages and translates the subtitles.",
   "capabilities": {
     "actions": {
       "name": "Actions",
