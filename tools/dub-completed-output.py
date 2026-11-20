@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Render and attach a dub for selected completed Arrumo output formats."""
 import argparse
+import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -43,6 +45,24 @@ def dub_output(args):
     if not args.dry_run and not credential_configured:
         raise ValueError("Speech provider credential is not configured")
     text_limit = provider["maxTextCharacters"]
+
+    cache = args.speech_cache
+    if cache and (cache.is_symlink() or (cache.exists() and not cache.is_dir())):
+        raise ValueError("Speech cache must be a local directory")
+    if cache:
+        adapter_digest = provider["adapterSha256"]
+        if not re.fullmatch(r"[0-9a-f]{64}", adapter_digest):
+            raise ValueError("Speech adapter identity is unavailable")
+
+    def cached_clip(text):
+        if not cache:
+            return None
+        key = json.dumps([
+            1, str(args.database.resolve()), args.workspace, args.provider, args.voice,
+            provider["credentialSource"], adapter_digest, audio_format, text,
+        ], ensure_ascii=False)
+        name = hashlib.sha256(key.encode("utf-8")).hexdigest()
+        return cache / f"{name}.wav"
 
     translator = None
     if args.translator_plugin:
@@ -93,6 +113,7 @@ def dub_output(args):
         }
         output_plans.update(missing)
         texts = {segment["text"] for *_, segments in plans for segment in segments}
+        hits = {text for text in texts if cache and is_cached_clip(cached_clip(text))}
         return {
             "language": language,
             "provider": args.provider,
@@ -101,6 +122,8 @@ def dub_output(args):
             "outputs": [output_plans[format_id] for format_id in formats],
             "knownSpeechRequests": len(texts),
             "knownSpeechCharacters": sum(map(len, texts)),
+            "cachedSpeechRequests": len(hits),
+            "uncachedSpeechRequests": len(texts - hits),
             "speechEstimateComplete": not missing,
         }
 
@@ -127,14 +150,20 @@ def dub_output(args):
                     if text not in clips:
                         stem = scratch / f"speech-{len(clips)}"
                         cached = stem.with_suffix(".wav")
-                        raw = stem.with_suffix(f".{audio_format}")
-                        editor("synthesize-speech", args.workspace, args.provider, args.voice, raw, data=text)
-                        if audio_format == "mp3":
-                            subprocess.run([
-                                "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
-                                "-f", "mp3", "-i", str(raw), "-map", "0:a:0", "-c:a", "pcm_s16le", str(cached),
-                            ], check=True)
-                            raw.unlink()
+                        cache_file = cached_clip(text)
+                        if cache_file and is_cached_clip(cache_file):
+                            shutil.copyfile(cache_file, cached)
+                        else:
+                            raw = stem.with_suffix(f".{audio_format}")
+                            editor("synthesize-speech", args.workspace, args.provider, args.voice, raw, data=text)
+                            if audio_format == "mp3":
+                                subprocess.run([
+                                    "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
+                                    "-f", "mp3", "-i", str(raw), "-map", "0:a:0", "-c:a", "pcm_s16le", str(cached),
+                                ], check=True)
+                                raw.unlink()
+                            if cache_file:
+                                publish_cached_clip(cached, cache_file)
                         clips[text] = cached
                     (target / f"{segment['cue']}.wav").hardlink_to(clips[text])
                 dubbed = target / f"dubbed-{language}-{format_id}.mp4"
@@ -170,6 +199,26 @@ def dub_output(args):
     return {"completed": completed} if args.format == "all" or args.additional_format else completed[0]
 
 
+def is_cached_clip(path):
+    if path.is_symlink() or (path.exists() and (not path.is_file() or path.stat().st_size == 0)):
+        raise ValueError("Invalid cached speech clip")
+    return path.is_file()
+
+
+def publish_cached_clip(source, destination):
+    destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=destination.parent, prefix=".arrumo-speech-") as directory:
+        pending = Path(directory) / "clip.wav"
+        shutil.copyfile(source, pending)
+        with pending.open("r+b") as stream:
+            os.fsync(stream.fileno())
+        try:
+            destination.hardlink_to(pending)
+        except FileExistsError:
+            if not is_cached_clip(destination):
+                raise
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("editor", type=Path, help="path to arrumo-workspaces")
@@ -186,6 +235,7 @@ def main():
     subtitle_source.add_argument("--revision", type=int)
     subtitle_source.add_argument("--translator-plugin", help="create missing tracks with a bundled local translator")
     subtitle_source.add_argument("--translator", type=Path, help="create missing translated tracks with this local adapter")
+    parser.add_argument("--speech-cache", type=Path, help="reuse successful speech clips from a private local directory")
     parser.add_argument("--dry-run", action="store_true", help="report output plans without dispatching translation or speech")
     parser.add_argument("--media-runner", type=Path, help="SDK Linux run_media_package.py path")
     parser.add_argument("--package-sha256", help="reviewed Auto-Dubbing package digest for the media runner")
