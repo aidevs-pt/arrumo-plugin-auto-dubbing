@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 6,
   "id": "auto-dubbing",
   "name": "Arrumo Auto-Dubbing Plugin",
   "description": "Dubbing and subtitle translation for selected video outputs using configured providers.",
@@ -8,5 +8,24 @@
       "name": "Actions",
       "description": "Create dubbed outputs and translated subtitles."
     }
-  }
+  },
+  "code": {
+    "backend": {
+      "component": "backend.wasm"
+    }
+  },
+  "actions": [
+    {
+      "id": "read-subtitle-cues",
+      "label": "Read subtitle cues",
+      "description": "Prepare the text of an SRT track for translation.",
+      "scope": "workspace"
+    },
+    {
+      "id": "assemble-translated-subtitles",
+      "label": "Assemble translated subtitles",
+      "description": "Put translated cue text back on the source SRT timings.",
+      "scope": "workspace"
+    }
+  ]
 }
