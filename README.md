@@ -42,6 +42,10 @@ python3 tools/translate-completed-subtitles.py /path/to/arrumo-workspaces /path/
 
 The command reads the latest primary subtitles and creates the language track. Pass `--expected-revision` to update an existing track. The saved revision can be used immediately by the dubbing command below. Select a bundled provider by passing `--translator-plugin codex` or `--translator-plugin claude-code` in place of the executable path. This uses the sibling plugin source checkouts or the directory supplied by `ARRUMO_PLUGIN_SOURCE_ROOT`. When using tools from a release ZIP, set `ARRUMO_PLUGIN_SOURCE_ROOT` if selecting a translator by plugin ID. Translator credentials belong to the adapter executable. The editor does not launch this command automatically.
 
+## Dubbing guide
+
+[English](docs/en/dub-a-video.md) · [Español](docs/es/dub-a-video.md) · [Português](docs/pt/dub-a-video.md)
+
 ## Dub completed outputs
 
 The checkout tool can use a translated SRT already saved on a verified output. It reads each selected video and subtitle revision through the editor CLI, invokes the bundled Auto-Dubbing action, requests speech for each cue, and imports and attaches the resulting MP4.
