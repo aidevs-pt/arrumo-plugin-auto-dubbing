@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Mix synthesized cue clips into one timed voiceover WAV."""
+"""Render timed speech clips to WAV or add them to a new MP4."""
 import argparse
+from decimal import Decimal, InvalidOperation
 import json
 from pathlib import Path
 import subprocess
@@ -11,15 +12,18 @@ MAX_DURATION_MS = 24 * 60 * 60 * 1000
 SAMPLE_RATE = 48_000
 
 
-def render_voiceover(plan, clips, output):
+def render_voiceover(plan, clips, output, video=None):
     duration = plan["durationMillis"]
     segments = plan["segments"]
     if type(duration) is not int or not 0 < duration <= MAX_DURATION_MS:
         raise ValueError("Invalid voiceover duration")
     if not isinstance(segments, list) or not 1 <= len(segments) <= MAX_SEGMENTS:
         raise ValueError(f"Expected 1 to {MAX_SEGMENTS} speech segments")
-    if output.suffix.lower() != ".wav" or output.exists() or output.is_symlink():
-        raise ValueError("Expected a new WAV output path")
+    extension = ".mp4" if video else ".wav"
+    if output.suffix.lower() != extension or output.exists() or output.is_symlink():
+        raise ValueError(f"Expected a new {extension} output path")
+    if video is not None:
+        verify_video_duration(video, duration)
 
     inputs = []
     filters = []
@@ -61,7 +65,39 @@ def render_voiceover(plan, clips, output):
             ],
             check=True,
         )
+        if video is not None:
+            dubbed = Path(pending) / "dubbed.mp4"
+            subprocess.run(
+                [
+                    "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
+                    "-f", "mov", "-i", str(video.resolve()), "-f", "wav", "-i", str(rendered),
+                    "-map", "0:V:0", "-map", "1:a:0", "-map", "0:a?",
+                    "-c", "copy", "-c:a:0", "aac", "-b:a:0", "160k",
+                    "-disposition:a", "0", "-disposition:a:0", "default",
+                    "-movflags", "+faststart", str(dubbed),
+                ],
+                check=True,
+            )
+            rendered = dubbed
         output.hardlink_to(rendered)
+
+
+def verify_video_duration(video, duration):
+    if video.suffix.lower() != ".mp4" or video.is_symlink() or not video.is_file():
+        raise ValueError("Expected an existing MP4 video")
+    probe = subprocess.run(
+        [
+            "ffprobe", "-v", "error", "-f", "mov", "-select_streams", "V:0",
+            "-show_entries", "stream=duration", "-of", "csv=p=0", str(video.resolve()),
+        ],
+        check=True, capture_output=True, text=True,
+    )
+    try:
+        millis = Decimal(probe.stdout.strip()) * 1000
+    except InvalidOperation as error:
+        raise ValueError("Could not determine the video stream duration") from error
+    if not millis.is_finite() or abs(millis - duration) > 1:
+        raise ValueError("Voiceover duration does not match the video stream")
 
 
 def main():
@@ -69,13 +105,14 @@ def main():
     parser.add_argument("plan", type=Path)
     parser.add_argument("clips", type=Path, help="directory containing <cue>.wav files")
     parser.add_argument("output", type=Path)
+    parser.add_argument("--video", type=Path, help="source MP4 for dubbed video output")
     args = parser.parse_args()
     try:
         with args.plan.open("rb") as source:
             data = source.read(64 * 1024 + 1)
         if len(data) > 64 * 1024:
             raise ValueError("Speech plan exceeds 64 KiB")
-        render_voiceover(json.loads(data), args.clips, args.output)
+        render_voiceover(json.loads(data), args.clips, args.output, args.video)
     except (OSError, ValueError, KeyError, TypeError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"{error}\n")
 

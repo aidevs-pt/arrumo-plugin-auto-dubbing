@@ -13,7 +13,7 @@ The `plan-speech` workspace action accepts `{"subtitles":"<translated SRT>"}` an
 
 Cue numbers are one-based positions. Send one translated text per source cue. Translations may arrive in any order, and the assembled file retains the original cue timestamps. Success is wrapped as `{"ok":true,"result":{...}}`. Invalid input returns `{"ok":false,"error":"<code>"}`.
 
-Callers can save the assembled SRT as a language track on the selected verified output. Each action is subject to the SDK's 64 KiB request and response limits. Automatic translation, speech synthesis and dubbed video rendering are pending.
+Callers can save the assembled SRT as a language track on the selected verified output. Each action is subject to the SDK's 64 KiB request and response limits. Automatic translation and speech synthesis are pending.
 
 ## Render supplied speech clips locally
 
@@ -23,7 +23,13 @@ Place the synthesized PCM WAV for each cue at `<cue>.wav` in a local directory. 
 python3 tools/render-voiceover.py plan.json /path/to/clips /path/to/new-voiceover.wav
 ```
 
-The renderer places each clip at its cue start, trims clips that extend beyond their cue window, mixes overlapping cues, and pads the result to the requested duration. It requires FFmpeg on the path and produces 48 kHz mono PCM. It runs as a local command outside the isolated component. Editor integration and video muxing remain pending.
+The renderer places each clip at its cue start, trims clips that extend beyond their cue window, mixes overlapping cues, and pads the result to the requested duration. It requires FFmpeg on the path and produces 48 kHz mono PCM. To produce a dubbed MP4, pass the source video. The renderer requires the plan duration to match the video stream. It copies the picture and existing audio streams and adds the voiceover as the default audio track.
+
+```sh
+python3 tools/render-voiceover.py plan.json /path/to/clips /path/to/dubbed.mp4 --video /path/to/source.mp4
+```
+
+These commands run locally outside the isolated component. Editor integration remains pending.
 
 ## Build and package
 

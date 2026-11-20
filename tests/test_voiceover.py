@@ -37,3 +37,45 @@ class VoiceoverTest(unittest.TestCase):
             original = output.read_bytes()
             self.assertNotEqual(subprocess.run(command, capture_output=True).returncode, 0)
             self.assertEqual(output.read_bytes(), original)
+
+    def test_mux_preserves_picture_and_original_audio(self):
+        tool = Path(__file__).resolve().parents[1] / "tools" / "render-voiceover.py"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source.mp4"
+            subprocess.run([
+                "ffmpeg", "-v", "error",
+                "-f", "lavfi", "-i", "color=c=blue:s=64x64:r=25:d=1",
+                "-f", "lavfi", "-i", "sine=frequency=220:duration=1",
+                "-c:v", "mpeg4", "-c:a", "aac", str(source),
+            ], check=True)
+            original = source.read_bytes()
+            with wave.open(str(root / "1.wav"), "wb") as clip:
+                clip.setparams((1, 2, 48000, 0, "NONE", "not compressed"))
+                clip.writeframes(array.array("h", [5000]) * 4800)
+            plan = root / "plan.json"
+            output = root / "dubbed.mp4"
+            command = [sys.executable, tool, plan, root, output, "--video", source]
+            data = {"durationMillis": 900, "segments": [{
+                "cue": 1, "startMillis": 200, "endMillis": 400,
+            }]}
+            plan.write_text(json.dumps(data), encoding="utf-8")
+            self.assertNotEqual(subprocess.run(command, capture_output=True).returncode, 0)
+            self.assertFalse(output.exists())
+            data["durationMillis"] = 1000
+            plan.write_text(json.dumps(data), encoding="utf-8")
+            subprocess.run(command, check=True, capture_output=True)
+            streams = json.loads(subprocess.check_output([
+                "ffprobe", "-v", "error", "-show_streams", "-of", "json", output,
+            ]))["streams"]
+            self.assertEqual([stream["codec_type"] for stream in streams], ["video", "audio", "audio"])
+            self.assertEqual([stream["disposition"]["default"] for stream in streams[1:]], [1, 0])
+            self.assertEqual(float(streams[0]["duration"]), 1.0)
+            for source_track, output_track in [("0:v:0", "0:v:0"), ("0:a:0", "0:a:1")]:
+                def packet_hash(path, track):
+                    return subprocess.check_output([
+                        "ffmpeg", "-v", "error", "-i", path,
+                        "-map", track, "-c", "copy", "-f", "hash", "-",
+                    ])
+                self.assertEqual(packet_hash(source, source_track), packet_hash(output, output_track))
+            self.assertEqual(source.read_bytes(), original)
