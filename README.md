@@ -22,10 +22,10 @@ rustup target add wasm32-unknown-unknown
 cargo test --locked
 cargo build --locked --release --target wasm32-unknown-unknown
 wasm-tools component new target/wasm32-unknown-unknown/release/arrumo_auto_dubbing.wasm -o backend.wasm
-python3 ../../plugin-sdk/tools/package_plugin.py . /tmp/arrumo-auto-dubbing.zip --include backend.wasm
+python3 ../../plugin-sdk/tools/package_plugin.py . plugin.zip --include backend.wasm
 ```
 
-The package can be installed in a core-only editor build for local testing. The default registry entry currently resolves the bundled manifest. Loading a runnable package from a default registry entry is pending.
+The editor’s default debug build picks up `plugin.zip` from this sibling checkout. The package can also be installed manually in a core-only build. Published editor builds require a staged package whose digest is pinned in the official registry.
 
 Copyright © 2026 DEVS AI Unipessoal LDA. Licensed under the [GNU Affero General Public License v3.0](LICENSE).
 
