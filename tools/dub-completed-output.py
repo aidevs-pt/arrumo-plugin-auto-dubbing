@@ -36,7 +36,8 @@ def dub_output(args):
     audio_format = provider["responseFormat"]
     if audio_format not in ("mp3", "wav") or (args.audio_format and args.audio_format != audio_format):
         raise ValueError("Requested audio format differs from the speech provider response format")
-    if provider["credentialSource"] not in ("workspace", "app"):
+    credential_configured = provider["credentialSource"] in ("workspace", "app")
+    if not args.dry_run and not credential_configured:
         raise ValueError("Speech provider credential is not configured")
     text_limit = provider["maxTextCharacters"]
 
@@ -46,13 +47,20 @@ def dub_output(args):
     elif args.translator:
         translator = [args.translator.resolve(strict=True)]
     plans = []
+    missing = {}
     for format_id in formats:
         scope = (args.workspace, args.run, format_id)
         try:
             source = Path(editor("verified-video-source", *scope))
             duration = round(video_duration_ms(source))
             revision = [] if args.revision is None else [args.revision]
-            if translator and language not in editor("completed-subtitle-languages", *scope):
+            if (translator or args.dry_run) and language not in editor("completed-subtitle-languages", *scope):
+                if args.dry_run:
+                    missing[format_id] = {
+                        "formatId": format_id, "durationMillis": duration,
+                        "status": "translation_pending" if translator else "subtitle_track_missing",
+                    }
+                    continue
                 translated = translate_track(editor, scope, language, translator)
                 revision = [translated["revision"]]
             track = editor("completed-subtitle-track", *scope, language, *revision)
@@ -71,6 +79,27 @@ def dub_output(args):
         except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
             raise ValueError(f"Format {format_id} preflight failed: {error}") from error
         plans.append((scope, source, duration, track["revision"], segments))
+
+    if args.dry_run:
+        output_plans = {
+            scope[2]: {
+                "formatId": scope[2], "durationMillis": duration,
+                "status": "ready", "subtitleRevision": revision, "cueCount": len(segments),
+            }
+            for scope, _, duration, revision, segments in plans
+        }
+        output_plans.update(missing)
+        texts = {segment["text"] for *_, segments in plans for segment in segments}
+        return {
+            "language": language,
+            "provider": args.provider,
+            "responseFormat": audio_format,
+            "credentialConfigured": credential_configured,
+            "outputs": [output_plans[format_id] for format_id in formats],
+            "knownSpeechRequests": len(texts),
+            "knownSpeechCharacters": sum(map(len, texts)),
+            "speechEstimateComplete": not missing,
+        }
 
     completed = []
     with tempfile.TemporaryDirectory(prefix="arrumo-dub-") as temporary:
@@ -126,6 +155,7 @@ def main():
     subtitle_source.add_argument("--revision", type=int)
     subtitle_source.add_argument("--translator-plugin", help="create missing tracks with a bundled local translator")
     subtitle_source.add_argument("--translator", type=Path, help="create missing translated tracks with this local adapter")
+    parser.add_argument("--dry-run", action="store_true", help="report output plans without dispatching translation or speech")
     args = parser.parse_args()
     try:
         result = dub_output(args)
