@@ -31,6 +31,17 @@ python3 tools/render-voiceover.py plan.json /path/to/clips /path/to/dubbed.mp4 -
 
 These commands run locally outside the isolated component. Editor integration remains pending.
 
+## Dub one completed output
+
+The checkout tool can use a translated SRT already saved on a verified output. It reads the selected video and subtitle revision through the editor CLI, invokes the bundled Auto-Dubbing action, requests speech for each cue, and imports and attaches the resulting MP4.
+
+```sh
+python3 tools/dub-completed-output.py /path/to/arrumo-workspaces /path/to/workspaces.sqlite \
+  1 42 3 es elevenlabs YOUR_VOICE_ID --audio-format mp3
+```
+
+The numeric arguments select workspace, run, and format. Pass `--revision` to pin a particular subtitle revision. Select the provider's response format with `--audio-format`. Each cue makes one synthesis request using the credential configured in Arrumo. The tool renders one selected format per invocation. If attachment fails after import, it reports the managed asset ID for recovery. Automatic translation and desktop invocation remain pending.
+
 ## Build and package
 
 From a checkout with the Arrumo Plugin SDK available at `../../plugin-sdk` and `wasm-tools` on the path:
