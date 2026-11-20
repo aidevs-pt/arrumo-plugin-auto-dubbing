@@ -55,9 +55,9 @@ The numeric arguments select workspace, run, and format. Pass `--revision` to pi
 
 Add `--dry-run` to inspect each selected format, its subtitle status, and the deduplicated request and character counts for existing tracks. When a track is missing, the speech estimate is incomplete. The preview makes no translation or speech requests and writes no files to the workspace.
 
-A batch reports its completed formats and stops at the first processing failure. Its JSON includes the failed format and any skipped format IDs. If attachment fails after import, the result includes the managed asset ID for recovery. Published translator package dispatch and desktop invocation remain pending.
+A batch reports its completed formats and stops at the first processing failure. Its JSON includes the failed format and any skipped format IDs. The editor verifies and attaches each rendered variant in one operation. Rejected variants leave no managed asset. Published translator package dispatch and desktop invocation remain pending.
 
-For the isolated Linux render path, append `--media-runner /path/to/sdk/tools/run_media_package.py --package-sha256 <reviewed-digest>`. The editor exports the exact Auto-Dubbing package selected in its catalog. The worker receives a copy of the selected source video, cue WAVs and timing windows. The local command verifies the returned media path and duration before importing and attaching it. Use a package that includes the media worker entrypoint.
+For the isolated Linux render path, append `--media-runner /path/to/sdk/tools/run_media_package.py --package-sha256 <reviewed-digest>`. The editor exports the exact Auto-Dubbing package selected in its catalog. The worker receives a copy of the selected source video, cue WAVs and timing windows. The local command verifies the returned media path. The editor verifies dimensions, duration, and audio before attaching it. Use a package that includes the media worker entrypoint.
 
 ## Build and package
 

@@ -119,7 +119,6 @@ def dub_output(args):
                         raise ValueError("Reviewed package does not contain the dubbing media worker")
         for index, (scope, source, duration, revision, segments) in enumerate(plans):
             format_id = scope[2]
-            asset_id = None
             try:
                 target = scratch / str(format_id)
                 target.mkdir()
@@ -163,12 +162,9 @@ def dub_output(args):
                     if abs(video_duration_ms(artifact) - duration) > 1:
                         raise ValueError("Media worker output duration differs from the source")
                     artifact.rename(dubbed)
-                asset_id = editor("import-asset", args.workspace, dubbed)["id"]
-                editor("attach-completed-media", *scope, asset_id)
+                asset_id = editor("import-completed-video-variant", *scope, dubbed)["id"]
             except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
                 failure = {"formatId": format_id, "error": str(error)}
-                if asset_id is not None:
-                    failure["assetId"] = asset_id
                 return {"completed": completed, "failed": failure, "skipped": formats[index + 1:]}
             completed.append({"assetId": asset_id, "formatId": format_id, "subtitleRevision": revision})
     return {"completed": completed} if args.format == "all" or args.additional_format else completed[0]
