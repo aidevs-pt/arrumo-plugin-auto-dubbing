@@ -55,7 +55,7 @@ The numeric arguments select workspace, run, and format. Pass `--revision` to pi
 
 Add `--dry-run` to inspect each selected format, its subtitle status, and the deduplicated request and character counts for existing tracks. When a track is missing, the speech estimate is incomplete. The preview makes no translation or speech requests and writes no files to the workspace.
 
-Pass `--speech-cache /path/to/private-cache` to reuse successful cue audio across attempts. The cache key includes workspace, provider adapter digest, voice, and exact cue text. The files contain the generated audio. Dry runs report known cache hits without creating the cache directory. Use the same cache path when retrying a failed batch.
+Pass `--speech-cache /path/to/private-cache` to reuse successful cue audio across attempts. The cache key includes workspace, provider adapter digest, voice, and exact cue text. The files contain the generated audio. Dry runs report known cache hits without creating the cache directory. Use the same cache path when retrying a failed batch. Concurrent runs using that path wait for in-progress synthesis for a matching cue and reuse the published audio. Keep the cache on a local filesystem that supports process locks.
 
 A batch reports its completed formats and stops at the first processing failure. Its JSON includes the failed format and any skipped format IDs. The editor verifies and attaches each rendered variant in one operation. Rejected variants leave no managed asset. Published translator package dispatch and desktop invocation remain pending.
 

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Render and attach a dub for selected completed Arrumo output formats."""
 import argparse
+from contextlib import contextmanager, nullcontext
+import errno
 import hashlib
 import json
 import os
@@ -10,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import zipfile
 
 from subtitle_translation import bundled_translator, translate_track
@@ -151,19 +154,20 @@ def dub_output(args):
                         stem = scratch / f"speech-{len(clips)}"
                         cached = stem.with_suffix(".wav")
                         cache_file = cached_clip(text)
-                        if cache_file and is_cached_clip(cache_file):
-                            shutil.copyfile(cache_file, cached)
-                        else:
-                            raw = stem.with_suffix(f".{audio_format}")
-                            editor("synthesize-speech", args.workspace, args.provider, args.voice, raw, data=text)
-                            if audio_format == "mp3":
-                                subprocess.run([
-                                    "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
-                                    "-f", "mp3", "-i", str(raw), "-map", "0:a:0", "-c:a", "pcm_s16le", str(cached),
-                                ], check=True)
-                                raw.unlink()
-                            if cache_file:
-                                publish_cached_clip(cached, cache_file)
+                        with speech_clip_lock(cache_file) if cache_file else nullcontext():
+                            if cache_file and is_cached_clip(cache_file):
+                                shutil.copyfile(cache_file, cached)
+                            else:
+                                raw = stem.with_suffix(f".{audio_format}")
+                                editor("synthesize-speech", args.workspace, args.provider, args.voice, raw, data=text)
+                                if audio_format == "mp3":
+                                    subprocess.run([
+                                        "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
+                                        "-f", "mp3", "-i", str(raw), "-map", "0:a:0", "-c:a", "pcm_s16le", str(cached),
+                                    ], check=True, timeout=120)
+                                    raw.unlink()
+                                if cache_file:
+                                    publish_cached_clip(cached, cache_file)
                         clips[text] = cached
                     (target / f"{segment['cue']}.wav").hardlink_to(clips[text])
                 dubbed = target / f"dubbed-{language}-{format_id}.mp4"
@@ -203,6 +207,39 @@ def is_cached_clip(path):
     if path.is_symlink() or (path.exists() and (not path.is_file() or path.stat().st_size == 0)):
         raise ValueError("Invalid cached speech clip")
     return path.is_file()
+
+
+@contextmanager
+def speech_clip_lock(path, timeout=300):
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    lock_path = path.with_suffix(".lock")
+    if lock_path.is_symlink():
+        raise ValueError("Invalid speech cache lock")
+    flags = os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0)
+    with os.fdopen(os.open(lock_path, flags, 0o600), "r+b") as lock:
+        if os.name == "nt":
+            import msvcrt
+
+            def acquire():
+                msvcrt.locking(lock.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+
+            def acquire():
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+        deadline = time.monotonic() + timeout
+        while True:
+            try:
+                acquire()
+                break
+            except OSError as error:
+                if error.errno not in (errno.EACCES, errno.EAGAIN, errno.EDEADLK):
+                    raise
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("Timed out waiting for cached speech synthesis") from error
+                time.sleep(0.1)
+        yield
 
 
 def publish_cached_clip(source, destination):
