@@ -4,8 +4,11 @@ import argparse
 import json
 from pathlib import Path
 import re
+import shutil
 import subprocess
+import sys
 import tempfile
+import zipfile
 
 from subtitle_translation import bundled_translator, translate_track
 from voiceover import render_voiceover, validate_windows, video_duration_ms
@@ -105,6 +108,15 @@ def dub_output(args):
     with tempfile.TemporaryDirectory(prefix="arrumo-dub-") as temporary:
         scratch = Path(temporary)
         clips = {}
+        package = None
+        if args.media_runner:
+            runner = args.media_runner.resolve(strict=True)
+            package = scratch / "reviewed.zip"
+            editor("export-plugin-package", "auto-dubbing", args.package_sha256, package)
+            with zipfile.ZipFile(package) as archive:
+                for name in ("tools/render-media-worker.py", "tools/voiceover.py"):
+                    if name not in archive.NameToInfo or archive.getinfo(name).file_size == 0:
+                        raise ValueError("Reviewed package does not contain the dubbing media worker")
         for index, (scope, source, duration, revision, segments) in enumerate(plans):
             format_id = scope[2]
             asset_id = None
@@ -127,7 +139,30 @@ def dub_output(args):
                         clips[text] = cached
                     (target / f"{segment['cue']}.wav").hardlink_to(clips[text])
                 dubbed = target / f"dubbed-{language}-{format_id}.mp4"
-                render_voiceover({"durationMillis": duration, "segments": segments}, target, dubbed, source)
+                plan = {
+                    "durationMillis": duration,
+                    "segments": [{key: segment[key] for key in ("cue", "startMillis", "endMillis")}
+                                 for segment in segments],
+                }
+                if package is None:
+                    render_voiceover(plan, target, dubbed, source)
+                else:
+                    shutil.copyfile(source, target / "source.mp4")
+                    (target / "plan.json").write_text(json.dumps(plan), encoding="utf-8")
+                    worker_output = scratch / f"rendered-{format_id}"
+                    result = subprocess.run([
+                        sys.executable, runner, package,
+                        "--sha256", args.package_sha256,
+                        "--inputs", target, "--output", worker_output,
+                        "--entrypoint", "tools/render-media-worker.py",
+                        "--include", "tools/voiceover.py",
+                    ], capture_output=True, encoding="utf-8", check=True, timeout=130)
+                    artifact = Path(json.loads(result.stdout)["file"])
+                    if artifact.resolve(strict=True) != worker_output / "dubbed.mp4" or artifact.is_symlink():
+                        raise ValueError("Media worker output path differs from the requested artifact")
+                    if abs(video_duration_ms(artifact) - duration) > 1:
+                        raise ValueError("Media worker output duration differs from the source")
+                    artifact.rename(dubbed)
                 asset_id = editor("import-asset", args.workspace, dubbed)["id"]
                 editor("attach-completed-media", *scope, asset_id)
             except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
@@ -156,13 +191,17 @@ def main():
     subtitle_source.add_argument("--translator-plugin", help="create missing tracks with a bundled local translator")
     subtitle_source.add_argument("--translator", type=Path, help="create missing translated tracks with this local adapter")
     parser.add_argument("--dry-run", action="store_true", help="report output plans without dispatching translation or speech")
+    parser.add_argument("--media-runner", type=Path, help="SDK Linux run_media_package.py path")
+    parser.add_argument("--package-sha256", help="reviewed Auto-Dubbing package digest for the media runner")
     args = parser.parse_args()
+    if bool(args.media_runner) != bool(args.package_sha256):
+        parser.error("--media-runner and --package-sha256 must be provided together")
     try:
         result = dub_output(args)
         print(json.dumps(result))
         if "failed" in result:
             parser.exit(1)
-    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
+    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError, zipfile.BadZipFile) as error:
         parser.exit(1, f"{error}\n")
 
 
