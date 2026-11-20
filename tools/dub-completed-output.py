@@ -32,6 +32,14 @@ def dub_output(args):
     if not formats or any(format_id <= 0 for format_id in formats) or len(set(formats)) != len(formats):
         raise ValueError("Select one or more distinct verified format IDs")
 
+    provider = editor("speech-provider-status", args.workspace, args.provider)
+    audio_format = provider["responseFormat"]
+    if audio_format not in ("mp3", "wav") or (args.audio_format and args.audio_format != audio_format):
+        raise ValueError("Requested audio format differs from the speech provider response format")
+    if provider["credentialSource"] not in ("workspace", "app"):
+        raise ValueError("Speech provider credential is not configured")
+    text_limit = provider["maxTextCharacters"]
+
     translator = None
     if args.translator_plugin:
         translator = bundled_translator(editor, args.translator_plugin)
@@ -58,6 +66,8 @@ def dub_output(args):
             validate_windows(duration, segments)
             if any(not isinstance(segment["text"], str) or not segment["text"].strip() for segment in segments):
                 raise ValueError("Speech plan contains invalid cue text")
+            if any(len(segment["text"]) > text_limit for segment in segments):
+                raise ValueError(f"A cue exceeds the speech provider limit of {text_limit} characters")
         except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:
             raise ValueError(f"Format {format_id} preflight failed: {error}") from error
         plans.append((scope, source, duration, track["revision"], segments))
@@ -77,9 +87,9 @@ def dub_output(args):
                     if text not in clips:
                         stem = scratch / f"speech-{len(clips)}"
                         cached = stem.with_suffix(".wav")
-                        raw = stem.with_suffix(f".{args.audio_format}")
+                        raw = stem.with_suffix(f".{audio_format}")
                         editor("synthesize-speech", args.workspace, args.provider, args.voice, raw, data=text)
-                        if args.audio_format == "mp3":
+                        if audio_format == "mp3":
                             subprocess.run([
                                 "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
                                 "-f", "mp3", "-i", str(raw), "-map", "0:a:0", "-c:a", "pcm_s16le", str(cached),
@@ -111,7 +121,7 @@ def main():
     parser.add_argument("language")
     parser.add_argument("provider")
     parser.add_argument("voice")
-    parser.add_argument("--audio-format", choices=["mp3", "wav"], required=True)
+    parser.add_argument("--audio-format", choices=["mp3", "wav"], help="optionally require this provider response format")
     subtitle_source = parser.add_mutually_exclusive_group()
     subtitle_source.add_argument("--revision", type=int)
     subtitle_source.add_argument("--translator-plugin", help="create missing tracks with a bundled local translator")
