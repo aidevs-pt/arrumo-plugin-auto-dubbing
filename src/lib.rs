@@ -24,6 +24,9 @@ enum Action {
     ReadSubtitleCues {
         subtitles: String,
     },
+    PlanSpeech {
+        subtitles: String,
+    },
     AssembleTranslatedSubtitles {
         subtitles: String,
         translations: Vec<Translation>,
@@ -39,6 +42,8 @@ struct Translation {
 
 struct Cue<'a> {
     timing: &'a str,
+    start_ms: u64,
+    end_ms: u64,
     text: String,
 }
 
@@ -55,7 +60,9 @@ fn read_cues(source: &str) -> Result<Vec<Cue<'_>>, &'static str> {
         }
         let timing = lines.next().ok_or("invalid_subtitles")?.trim();
         let (start, finish) = timing.split_once(" --> ").ok_or("invalid_subtitles")?;
-        if !valid_timestamp(start) || !valid_timestamp(finish) {
+        let start_ms = timestamp_ms(start).ok_or("invalid_subtitles")?;
+        let end_ms = timestamp_ms(finish).ok_or("invalid_subtitles")?;
+        if end_ms <= start_ms {
             return Err("invalid_subtitles");
         }
         let mut text = String::new();
@@ -68,7 +75,12 @@ fn read_cues(source: &str) -> Result<Vec<Cue<'_>>, &'static str> {
         if !valid_text(&text) {
             return Err("invalid_subtitles");
         }
-        cues.push(Cue { timing, text });
+        cues.push(Cue {
+            timing,
+            start_ms,
+            end_ms,
+            text,
+        });
     }
     if cues.is_empty() {
         return Err("invalid_subtitles");
@@ -76,29 +88,30 @@ fn read_cues(source: &str) -> Result<Vec<Cue<'_>>, &'static str> {
     Ok(cues)
 }
 
-fn valid_timestamp(value: &str) -> bool {
-    let mut parts = value.split([':', ',', '.']);
-    let Some(hours) = parts.next() else {
-        return false;
-    };
-    let (Some(minutes), Some(seconds), Some(milliseconds)) =
-        (parts.next(), parts.next(), parts.next())
-    else {
-        return false;
-    };
-    !hours.is_empty()
-        && hours.bytes().all(|byte| byte.is_ascii_digit())
-        && [minutes, seconds].into_iter().all(|part| {
-            part.len() == 2
-                && part.bytes().all(|byte| byte.is_ascii_digit())
-                && part.as_bytes()[0] <= b'5'
-        })
-        && milliseconds.len() == 3
-        && milliseconds.bytes().all(|byte| byte.is_ascii_digit())
-        && parts.next().is_none()
-        && value.as_bytes()[hours.len()] == b':'
-        && value.as_bytes()[hours.len() + 3] == b':'
-        && matches!(value.as_bytes()[hours.len() + 6], b',' | b'.')
+fn timestamp_ms(value: &str) -> Option<u64> {
+    let (hours, rest) = value.split_once(':')?;
+    let (minutes, rest) = rest.split_once(':')?;
+    let (seconds, milliseconds) = rest.split_once([',', '.'])?;
+    let digits = |part: &str| !part.is_empty() && part.bytes().all(|byte| byte.is_ascii_digit());
+    if !digits(hours)
+        || minutes.len() != 2
+        || seconds.len() != 2
+        || milliseconds.len() != 3
+        || ![minutes, seconds, milliseconds].into_iter().all(digits)
+    {
+        return None;
+    }
+    let minutes: u64 = minutes.parse().ok()?;
+    let seconds: u64 = seconds.parse().ok()?;
+    if minutes >= 60 || seconds >= 60 {
+        return None;
+    }
+    let remainder = minutes * 60_000 + seconds * 1_000 + milliseconds.parse::<u64>().ok()?;
+    hours
+        .parse::<u64>()
+        .ok()?
+        .checked_mul(3_600_000)?
+        .checked_add(remainder)
 }
 
 fn valid_text(value: &str) -> bool {
@@ -119,6 +132,21 @@ fn execute(action: Action) -> Result<Value, &'static str> {
                 })
                 .collect::<Vec<_>>();
             Ok(json!({ "cues": cues }))
+        }
+        Action::PlanSpeech { subtitles } => {
+            let segments = read_cues(&subtitles)?
+                .into_iter()
+                .enumerate()
+                .map(|(index, cue)| {
+                    json!({
+                        "cue": index + 1,
+                        "startMillis": cue.start_ms,
+                        "endMillis": cue.end_ms,
+                        "text": cue.text,
+                    })
+                })
+                .collect::<Vec<_>>();
+            Ok(json!({ "segments": segments }))
         }
         Action::AssembleTranslatedSubtitles {
             subtitles,
@@ -199,6 +227,35 @@ mod tests {
                 .to_string(),
             );
             assert_eq!(response, json!({"ok":false,"error":error}));
+        }
+    }
+    #[test]
+    fn speech_plan_preserves_cue_windows_and_rejects_invalid_times() {
+        let plan = |subtitles: &str| {
+            invoke(
+                &json!({
+                    "action": "plan-speech", "input": {"subtitles": subtitles}
+                })
+                .to_string(),
+            )
+        };
+        assert_eq!(
+            plan(SOURCE),
+            json!({"ok": true, "result": {"segments": [
+                {"cue": 1, "startMillis": 125, "endMillis": 1900, "text": "Hello"},
+                {"cue": 2, "startMillis": 2000, "endMillis": 3400, "text": "World"}
+            ]}})
+        );
+        for invalid in [
+            "00:00:00,125",
+            "00:00:00,100",
+            "00:60:01,900",
+            "999999999999999:00:01,900",
+        ] {
+            assert_eq!(
+                plan(&SOURCE.replace("00:00:01,900", invalid)),
+                json!({"ok": false, "error": "invalid_subtitles"})
+            );
         }
     }
 }

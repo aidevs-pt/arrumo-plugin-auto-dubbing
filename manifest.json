@@ -26,6 +26,12 @@
       "label": "Assemble translated subtitles",
       "description": "Put translated cue text back on the source SRT timings.",
       "scope": "workspace"
+    },
+    {
+      "id": "plan-speech",
+      "label": "Plan speech segments",
+      "description": "Read cue text and timing windows for speech synthesis.",
+      "scope": "workspace"
     }
   ]
 }

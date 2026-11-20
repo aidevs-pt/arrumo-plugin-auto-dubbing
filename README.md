@@ -9,6 +9,8 @@ The isolated backend currently prepares text for translation and reassembles tra
 | `read-subtitle-cues` | `{"subtitles":"<source SRT>"}` | `{"cues":[{"cue":1,"text":"<source text>"}]}` |
 | `assemble-translated-subtitles` | `{"subtitles":"<source SRT>","translations":[{"cue":1,"text":"<translated text>"}]}` | `{"subtitles":"<translated SRT>"}` |
 
+The `plan-speech` workspace action accepts `{"subtitles":"<translated SRT>"}` and returns `{"segments":[{"cue":1,"startMillis":125,"endMillis":1900,"text":"<translated text>"}]}` in source cue order. Each segment gives the speech provider its text and the caller the cue's placement window. Overlapping cues retain their individual windows.
+
 Cue numbers are one-based positions. Send one translated text per source cue. Translations may arrive in any order, and the assembled file retains the original cue timestamps. Success is wrapped as `{"ok":true,"result":{...}}`. Invalid input returns `{"ok":false,"error":"<code>"}`.
 
 Callers can save the assembled SRT as a language track on the selected verified output. Each action is subject to the SDK's 64 KiB request and response limits. Automatic translation, speech synthesis and dubbed video rendering are pending.
