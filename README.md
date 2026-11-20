@@ -15,6 +15,16 @@ Cue numbers are one-based positions. Send one translated text per source cue. Tr
 
 Callers can save the assembled SRT as a language track on the selected verified output. Each action is subject to the SDK's 64 KiB request and response limits. Automatic translation, speech synthesis and dubbed video rendering are pending.
 
+## Render supplied speech clips locally
+
+Place the synthesized PCM WAV for each cue at `<cue>.wav` in a local directory. Save the `segments` from `plan-speech` and the target duration in milliseconds as a JSON object with `segments` and `durationMillis`. Run:
+
+```sh
+python3 tools/render-voiceover.py plan.json /path/to/clips /path/to/new-voiceover.wav
+```
+
+The renderer places each clip at its cue start, trims clips that extend beyond their cue window, mixes overlapping cues, and pads the result to the requested duration. It requires FFmpeg on the path and produces 48 kHz mono PCM. It runs as a local command outside the isolated component. Editor integration and video muxing remain pending.
+
 ## Build and package
 
 From a checkout with the Arrumo Plugin SDK available at `../../plugin-sdk` and `wasm-tools` on the path:
