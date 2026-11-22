@@ -45,5 +45,56 @@
       "es": "Elige un vídeo terminado y los idiomas que quieras. Auto-dubbing traduce los subtítulos y pone voz a cada corte, y los doblajes aparecen junto a las salidas originales.",
       "pt": "Escolhe um vídeo terminado e as línguas que queres. O Auto-dubbing traduz as legendas e dá voz a cada corte, e as dobragens aparecem junto às saídas originais."
     }
+  },
+  "icon": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 32 32\"><rect width=\"32\" height=\"32\" rx=\"8\" fill=\"#be185d\"/><circle cx=\"13\" cy=\"16\" r=\"6.5\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M6.5 16h13M13 9.5c2 2 2 11 0 13M13 9.5c-2 2-2 11 0 13\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/><path d=\"M23 12c1.3 1.1 2 2.5 2 4s-.7 2.9-2 4\" fill=\"none\" stroke=\"#ffffff\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>",
+  "translations": {
+    "es": {
+      "name": "Doblaje automático",
+      "description": "Pone voz en otros idiomas a los vídeos terminados y sus salidas, y traduce los subtítulos.",
+      "capabilities": {
+        "actions": {
+          "name": "Acciones",
+          "description": "Crea salidas dobladas y subtítulos traducidos."
+        }
+      },
+      "actions": {
+        "read-subtitle-cues": {
+          "label": "Leer subtítulos",
+          "description": "Prepara el texto de una pista SRT para traducirlo."
+        },
+        "assemble-translated-subtitles": {
+          "label": "Montar subtítulos traducidos",
+          "description": "Coloca el texto traducido sobre los tiempos del SRT original."
+        },
+        "plan-speech": {
+          "label": "Planificar segmentos de voz",
+          "description": "Lee el texto y las ventanas de tiempo de los subtítulos para sintetizar la voz."
+        }
+      }
+    },
+    "pt": {
+      "name": "Dobragem automática",
+      "description": "Dá voz noutras línguas aos vídeos terminados e às suas saídas, e traduz as legendas.",
+      "capabilities": {
+        "actions": {
+          "name": "Ações",
+          "description": "Cria saídas dobradas e legendas traduzidas."
+        }
+      },
+      "actions": {
+        "read-subtitle-cues": {
+          "label": "Ler legendas",
+          "description": "Prepara o texto de uma faixa SRT para tradução."
+        },
+        "assemble-translated-subtitles": {
+          "label": "Montar legendas traduzidas",
+          "description": "Coloca o texto traduzido nos tempos do SRT original."
+        },
+        "plan-speech": {
+          "label": "Planear segmentos de voz",
+          "description": "Lê o texto e as janelas de tempo das legendas para sintetizar a voz."
+        }
+      }
+    }
   }
 }
