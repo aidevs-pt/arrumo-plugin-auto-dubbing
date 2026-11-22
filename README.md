@@ -44,7 +44,7 @@ The command reads the latest primary subtitles and creates the language track. P
 
 ## Dubbing guide
 
-[English](docs/en/dub-a-video.md) · [Español](docs/es/dub-a-video.md) · [Português](docs/pt/dub-a-video.md)
+[English](https://github.com/aidevs-pt/arrumo-docs/blob/main/content/docs/en/plugins/auto-dubbing/dub-a-video.md) · [Español](https://github.com/aidevs-pt/arrumo-docs/blob/main/content/docs/es/plugins/auto-dubbing/dub-a-video.md) · [Português](https://github.com/aidevs-pt/arrumo-docs/blob/main/content/docs/pt/plugins/auto-dubbing/dub-a-video.md)
 
 ## Dub completed outputs
 
