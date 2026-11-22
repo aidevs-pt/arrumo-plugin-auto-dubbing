@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 6,
+  "schemaVersion": 8,
   "id": "auto-dubbing",
   "name": "Auto-dubbing",
   "description": "Voices finished videos and their outputs in other languages and translates the subtitles.",
@@ -33,5 +33,17 @@
       "description": "Read cue text and timing windows for speech synthesis.",
       "scope": "workspace"
     }
-  ]
+  ],
+  "introduction": {
+    "headline": {
+      "en": "Your videos, in more languages",
+      "es": "Tus vídeos, en más idiomas",
+      "pt": "Os teus vídeos, em mais línguas"
+    },
+    "body": {
+      "en": "Pick a finished video and the languages you want. Auto-dubbing translates the subtitles and voices each cut, and the dubs appear beside the original outputs.",
+      "es": "Elige un vídeo terminado y los idiomas que quieras. Auto-dubbing traduce los subtítulos y pone voz a cada corte, y los doblajes aparecen junto a las salidas originales.",
+      "pt": "Escolhe um vídeo terminado e as línguas que queres. O Auto-dubbing traduz as legendas e dá voz a cada corte, e as dobragens aparecem junto às saídas originais."
+    }
+  }
 }
