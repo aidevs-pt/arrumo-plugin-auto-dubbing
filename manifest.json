@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 8,
+  "schemaVersion": 9,
   "id": "auto-dubbing",
   "name": "Auto-dubbing",
   "description": "Voices finished videos and their outputs in other languages and translates the subtitles.",
@@ -19,19 +19,62 @@
       "id": "read-subtitle-cues",
       "label": "Read subtitle cues",
       "description": "Prepare the text of an SRT track for translation.",
-      "scope": "workspace"
+      "scope": "workspace",
+      "inputs": [
+        {
+          "id": "subtitles",
+          "label": "Subtitles",
+          "description": "The SRT track to read.",
+          "kind": "subtitles",
+          "required": true
+        }
+      ],
+      "placements": [
+        "completed-video"
+      ]
     },
     {
       "id": "assemble-translated-subtitles",
       "label": "Assemble translated subtitles",
       "description": "Put translated cue text back on the source SRT timings.",
-      "scope": "workspace"
+      "scope": "workspace",
+      "inputs": [
+        {
+          "id": "subtitles",
+          "label": "Subtitles",
+          "description": "The original SRT track whose timings are kept.",
+          "kind": "subtitles",
+          "required": true
+        },
+        {
+          "id": "translations",
+          "label": "Translated cues",
+          "description": "A list of {\"cue\": number, \"text\": \"…\"}, one per cue of the original track.",
+          "kind": "json",
+          "required": true
+        }
+      ],
+      "placements": [
+        "completed-video"
+      ]
     },
     {
       "id": "plan-speech",
       "label": "Plan speech segments",
       "description": "Read cue text and timing windows for speech synthesis.",
-      "scope": "workspace"
+      "scope": "workspace",
+      "inputs": [
+        {
+          "id": "subtitles",
+          "label": "Subtitles",
+          "description": "The SRT track to read.",
+          "kind": "subtitles",
+          "required": true
+        }
+      ],
+      "placements": [
+        "completed-video"
+      ]
     }
   ],
   "introduction": {
@@ -60,15 +103,37 @@
       "actions": {
         "read-subtitle-cues": {
           "label": "Leer subtítulos",
-          "description": "Prepara el texto de una pista SRT para traducirlo."
+          "description": "Prepara el texto de una pista SRT para traducirlo.",
+          "inputs": {
+            "subtitles": {
+              "label": "Subtítulos",
+              "description": "La pista SRT que se va a leer."
+            }
+          }
         },
         "assemble-translated-subtitles": {
           "label": "Montar subtítulos traducidos",
-          "description": "Coloca el texto traducido sobre los tiempos del SRT original."
+          "description": "Coloca el texto traducido sobre los tiempos del SRT original.",
+          "inputs": {
+            "subtitles": {
+              "label": "Subtítulos",
+              "description": "La pista SRT original, cuyos tiempos se conservan."
+            },
+            "translations": {
+              "label": "Subtítulos traducidos",
+              "description": "Una lista de {\"cue\": número, \"text\": \"…\"}, uno por cada subtítulo de la pista original."
+            }
+          }
         },
         "plan-speech": {
           "label": "Planificar segmentos de voz",
-          "description": "Lee el texto y las ventanas de tiempo de los subtítulos para sintetizar la voz."
+          "description": "Lee el texto y las ventanas de tiempo de los subtítulos para sintetizar la voz.",
+          "inputs": {
+            "subtitles": {
+              "label": "Subtítulos",
+              "description": "La pista SRT que se va a leer."
+            }
+          }
         }
       }
     },
@@ -84,15 +149,37 @@
       "actions": {
         "read-subtitle-cues": {
           "label": "Ler legendas",
-          "description": "Prepara o texto de uma faixa SRT para tradução."
+          "description": "Prepara o texto de uma faixa SRT para tradução.",
+          "inputs": {
+            "subtitles": {
+              "label": "Legendas",
+              "description": "A faixa SRT a ler."
+            }
+          }
         },
         "assemble-translated-subtitles": {
           "label": "Montar legendas traduzidas",
-          "description": "Coloca o texto traduzido nos tempos do SRT original."
+          "description": "Coloca o texto traduzido nos tempos do SRT original.",
+          "inputs": {
+            "subtitles": {
+              "label": "Legendas",
+              "description": "A faixa SRT original, cujos tempos se mantêm."
+            },
+            "translations": {
+              "label": "Legendas traduzidas",
+              "description": "Uma lista de {\"cue\": número, \"text\": \"…\"}, uma por cada legenda da faixa original."
+            }
+          }
         },
         "plan-speech": {
           "label": "Planear segmentos de voz",
-          "description": "Lê o texto e as janelas de tempo das legendas para sintetizar a voz."
+          "description": "Lê o texto e as janelas de tempo das legendas para sintetizar a voz.",
+          "inputs": {
+            "subtitles": {
+              "label": "Legendas",
+              "description": "A faixa SRT a ler."
+            }
+          }
         }
       }
     }
