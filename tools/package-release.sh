@@ -9,7 +9,7 @@ fi
 sdk=$1
 output=$2
 source=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
-sdk_commit=9ba73a07d60f5da04e4715ce9ed6fbe6d5ae2ac3
+sdk_commit=455d5fcde499655e72441a2d7382bca454837c9f
 toolchain=1.100.0
 
 if [ "$(git -C "$sdk" rev-parse HEAD)" != "$sdk_commit" ] ||
@@ -34,6 +34,8 @@ wasm-tools component new \
   -o "$pending/backend.wasm"
 wasm-tools validate "$pending/backend.wasm"
 cp "$source/manifest.json" "$source/LICENSE" "$source/README.md" "$pending/"
+icon=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1])).get("icon", ""))' "$source/manifest.json")
+[ -z "$icon" ] || cp "$source/$icon" "$pending/$icon"
 mkdir "$pending/tools"
 set -- --include backend.wasm --include LICENSE --include README.md
 for tool in prune-speech-cache.py speech_cache.py render-media-worker.py dub-completed-output.py render-voiceover.py translate-completed-subtitles.py subtitle_translation.py voiceover.py; do
