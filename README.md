@@ -1,6 +1,24 @@
-# Arrumo Auto-Dubbing Plugin
+<p align="center">
+  <img src="icon.svg" width="88" height="88" alt="">
+</p>
 
-Dubbing and subtitle translation for selected video outputs using configured providers.
+<h1 align="center">Auto-Dubbing for Arrumo AI Video Editor</h1>
+
+<p align="center">Dub finished videos into other languages and translate their subtitles, keeping every cue on time.</p>
+
+<p align="center">
+  <a href="LICENSE"><img alt="License: AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-2337B4"></a>
+  <img alt="Bundled with Arrumo" src="https://img.shields.io/badge/bundled%20with-Arrumo-2337B4">
+  <a href="https://www.aidevs.pt/tools/arrumo/docs/plugins/auto-dubbing/dub-a-video"><img alt="Docs in English, Spanish and Portuguese" src="https://img.shields.io/badge/docs-EN%20%C2%B7%20ES%20%C2%B7%20PT-111"></a>
+</p>
+
+This plugin ships with [Arrumo AI Video Editor](https://github.com/aidevs-pt/arrumo-video-editor), the free, open-source desktop app where an AI agent writes, designs, voices and cuts your videos and you approve every step. It is turned on in a fresh install; manage it in **Settings › Plugins**.
+
+## Guides
+
+- **Dub a video**: [English](https://www.aidevs.pt/tools/arrumo/docs/plugins/auto-dubbing/dub-a-video) · [Español](https://www.aidevs.pt/es/tools/arrumo/docs/plugins/auto-dubbing/dub-a-video) · [Português](https://www.aidevs.pt/pt/tools/arrumo/docs/plugins/auto-dubbing/dub-a-video)
+
+## How it works
 
 The isolated backend currently prepares text for translation and reassembles translated subtitles. Its workspace actions accept the same SRT source for both calls.
 
@@ -41,10 +59,6 @@ python3 tools/translate-completed-subtitles.py /path/to/arrumo-workspaces /path/
 ```
 
 The command reads the latest primary subtitles and creates the language track. Pass `--expected-revision` to update an existing track. The saved revision can be used immediately by the dubbing command below. Select a bundled provider by passing `--translator-plugin codex` or `--translator-plugin claude-code` in place of the executable path. This uses the sibling plugin source checkouts or the directory supplied by `ARRUMO_PLUGIN_SOURCE_ROOT`. When using tools from a release ZIP, set `ARRUMO_PLUGIN_SOURCE_ROOT` if selecting a translator by plugin ID. Translator credentials belong to the adapter executable. The editor does not launch this command automatically.
-
-## Dubbing guide
-
-[English](https://github.com/aidevs-pt/arrumo-docs/blob/main/content/docs/en/plugins/auto-dubbing/dub-a-video.md) · [Español](https://github.com/aidevs-pt/arrumo-docs/blob/main/content/docs/es/plugins/auto-dubbing/dub-a-video.md) · [Português](https://github.com/aidevs-pt/arrumo-docs/blob/main/content/docs/pt/plugins/auto-dubbing/dub-a-video.md)
 
 ## Dub completed outputs
 
@@ -92,10 +106,6 @@ tools/package-release.sh /path/to/pinned/plugin-sdk /tmp/arrumo-auto-dubbing.zip
 
 Install Python `jsonschema` and place `wasm-tools` 1.262.0 on the path before running the command.
 
-Copyright © 2026 DEVS AI Unipessoal LDA. Licensed under the [GNU Affero General Public License v3.0](LICENSE).
-
-For custom AI solutions for your company, visit [DEVS AI](https://aidevs.pt).
-
 ## Render supplied clips with the isolated worker
 
 The release includes `tools/render-media-worker.py`. Use the SDK media
@@ -104,3 +114,7 @@ Supply a dedicated input directory containing `source.mp4`, `plan.json`
 and the numbered cue WAV files. The worker writes `dubbed.mp4` and
 `result.json` to the output directory. Translation and speech synthesis
 happen before this isolated media step.
+
+## License
+
+Copyright © 2026 DEVS AI Unipessoal LDA. Licensed under the [GNU Affero General Public License v3.0](LICENSE). Built by [DEVS AI](https://aidevs.pt), who make custom AI solutions for companies.
