@@ -41,7 +41,7 @@ Place the synthesized PCM WAV for each cue at `<cue>.wav` in a local directory. 
 python3 tools/render-voiceover.py plan.json /path/to/clips /path/to/new-voiceover.wav
 ```
 
-The renderer places each clip at its cue start, trims clips that extend beyond their cue window, mixes overlapping cues, and pads the result to the requested duration. It requires FFmpeg on the path and produces 48 kHz mono PCM. To produce a dubbed MP4, pass the source video. The renderer requires the plan duration to match the video stream. It copies the picture and existing audio streams and adds the voiceover as the default audio track.
+The renderer places each clip at its cue start, trims clips that extend beyond their cue window, mixes overlapping cues, and pads the result to the requested duration. It produces 48 kHz mono PCM with the FFmpeg installed with Arrumo: `arrumo-ffmpeg` and `arrumo-ffprobe` are on the PATH on Linux. On macOS and Windows they're next to the app's executable, so point `ARRUMO_FFMPEG` and `ARRUMO_FFPROBE` at them, for example `/Applications/Arrumo AI Video Editor.app/Contents/MacOS/arrumo-ffmpeg`. Without them, it uses FFmpeg from the PATH. To produce a dubbed MP4, pass the source video. The renderer requires the plan duration to match the video stream. It copies the picture and existing audio streams and adds the voiceover as the default audio track.
 
 ```sh
 python3 tools/render-voiceover.py plan.json /path/to/clips /path/to/dubbed.mp4 --video /path/to/source.mp4

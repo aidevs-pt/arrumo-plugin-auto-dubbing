@@ -1,3 +1,4 @@
 /target/
 /backend.wasm
 /plugin.zip
+__pycache__/

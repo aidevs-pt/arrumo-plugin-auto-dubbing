@@ -14,7 +14,7 @@ import zipfile
 
 from speech_cache import is_cached_clip, publish_cached_clip, reuse_cached_clip, speech_clip_lock
 from subtitle_translation import bundled_translator, translate_track
-from voiceover import render_voiceover, validate_windows, video_duration_ms
+from voiceover import media_tool, render_voiceover, validate_windows, video_duration_ms
 
 
 def dub_output(args):
@@ -160,7 +160,7 @@ def dub_output(args):
                                 editor("synthesize-speech", args.workspace, args.provider, args.voice, raw, data=text)
                                 if audio_format == "mp3":
                                     subprocess.run([
-                                        "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
+                                        media_tool("ffmpeg"), "-nostdin", "-hide_banner", "-loglevel", "error",
                                         "-f", "mp3", "-i", str(raw), "-map", "0:a:0", "-c:a", "pcm_s16le", str(cached),
                                     ], check=True, timeout=120)
                                     raw.unlink()

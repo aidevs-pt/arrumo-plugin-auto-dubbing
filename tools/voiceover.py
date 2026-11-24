@@ -3,13 +3,22 @@
 import argparse
 from decimal import Decimal, InvalidOperation
 import json
+import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 
 MAX_SEGMENTS = 256
 MAX_DURATION_MS = 24 * 60 * 60 * 1000
 SAMPLE_RATE = 48_000
+
+
+def media_tool(name):
+    """The FFmpeg tool to run: the ARRUMO_FFMPEG/ARRUMO_FFPROBE override, the copy installed
+    with Arrumo, or the one on the PATH."""
+    override = os.environ.get(f"ARRUMO_{name.upper()}")
+    return override or shutil.which(f"arrumo-{name}") or name
 
 
 def validate_windows(duration, segments):
@@ -65,7 +74,7 @@ def render_voiceover(plan, clips, output, video=None):
         rendered = Path(pending) / "voiceover.wav"
         subprocess.run(
             [
-                "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
+                media_tool("ffmpeg"), "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
                 *inputs, "-filter_complex", ";".join(filters), "-map", "[voice]",
                 "-c:a", "pcm_s16le", "-rf64", "auto", str(rendered),
             ],
@@ -75,7 +84,7 @@ def render_voiceover(plan, clips, output, video=None):
             dubbed = Path(pending) / "dubbed.mp4"
             subprocess.run(
                 [
-                    "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
+                    media_tool("ffmpeg"), "-nostdin", "-hide_banner", "-loglevel", "error",
                     "-f", "mov", "-i", str(video.resolve()), "-f", "wav", "-i", str(rendered),
                     "-map", "0:V:0", "-map", "1:a:0", "-map", "0:a?",
                     "-c", "copy", "-c:a:0", "aac", "-b:a:0", "160k",
@@ -93,7 +102,7 @@ def video_duration_ms(video):
         raise ValueError("Expected an existing MP4 video")
     probe = subprocess.run(
         [
-            "ffprobe", "-v", "error", "-f", "mov", "-select_streams", "V:0",
+            media_tool("ffprobe"), "-v", "error", "-f", "mov", "-select_streams", "V:0",
             "-show_entries", "stream=duration", "-of", "csv=p=0", str(video.resolve()),
         ],
         check=True, capture_output=True, text=True,
